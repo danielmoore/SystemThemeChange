@@ -52,7 +52,8 @@ namespace NorthHorizon.Samples.SystemThemeChange
             SetHwndNotifyHook(FilteredSystemThemeFilterMessageMethod);
 
             // Call the system message handler with ThemeChanged so it will clear the theme dictionary caches.
-            InvokeSystemThemeFilterMessage(IntPtr.Zero, ThemeChangedMessage, IntPtr.Zero, IntPtr.Zero, false);
+            bool handled = false;
+            InvokeSystemThemeFilterMessage(IntPtr.Zero, ThemeChangedMessage, IntPtr.Zero, IntPtr.Zero, ref handled);
 
             // Need this to make sure WPF doesn't default to classic. 
             ThemeWrapper_isActiveField.SetValue(null, true);
@@ -64,7 +65,8 @@ namespace NorthHorizon.Samples.SystemThemeChange
         public static void Reset()
         {
             SetHwndNotifyHook(SystemResources_SystemThemeFilterMessageMethod);
-            InvokeSystemThemeFilterMessage(IntPtr.Zero, ThemeChangedMessage, IntPtr.Zero, IntPtr.Zero, false);
+            bool handled = false;
+            InvokeSystemThemeFilterMessage(IntPtr.Zero, ThemeChangedMessage, IntPtr.Zero, IntPtr.Zero, ref handled);
         }
 
         private static void SetHwndNotifyHook(MethodInfo method)
@@ -84,17 +86,25 @@ namespace NorthHorizon.Samples.SystemThemeChange
             HwndWrapper_AddHookMethod.Invoke(hwndNotifyValue, new object[] { hookDelegate });
         }
 
-        private static IntPtr InvokeSystemThemeFilterMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, bool handled)
+        private static IntPtr InvokeSystemThemeFilterMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            return (IntPtr)SystemResources_SystemThemeFilterMessageMethod.Invoke(null, new object[] { hwnd, msg, wParam, lParam, handled });
+            var args = new object[] { hwnd, msg, wParam, lParam, handled };
+            var result = (IntPtr)SystemResources_SystemThemeFilterMessageMethod.Invoke(null, args);
+
+            handled = (bool)args[4];
+
+            return result;
         }
 
         private static IntPtr FilteredSystemThemeFilterMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == ThemeChangedMessage)
+            {
+                handled = true;
                 return IntPtr.Zero;
+            }
 
-            return InvokeSystemThemeFilterMessage(hwnd, msg, wParam, lParam, handled);
+            return InvokeSystemThemeFilterMessage(hwnd, msg, wParam, lParam, ref handled);
         }
     }
 }
