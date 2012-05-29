@@ -18,6 +18,7 @@ namespace NorthHorizon.Samples.SystemThemeChange
         private const int ThemeChangedMessage = 0x31a;
 
         private static readonly MethodInfo FilteredSystemThemeFilterMessageMethod = typeof(ThemeHelper).GetMethod("FilteredSystemThemeFilterMessage", StaticNonPublic);
+        private static readonly MethodInfo SystemThemeFilterMessageMethod = typeof(ThemeHelper).GetMethod("EmptySystemThemeFilterMessage", StaticNonPublic);
 
         private static readonly Assembly PresentationFramework = Assembly.GetAssembly(typeof(Window));
 
@@ -73,18 +74,20 @@ namespace NorthHorizon.Samples.SystemThemeChange
         {
             var hookDelegate = Delegate.CreateDelegate(HwndWrapperHook, FilteredSystemThemeFilterMessageMethod);
 
+            // Make sure _hwndNotify and _hwndNotifyHook are set!
+            SystemResources_EnsureResourceChangeListener.Invoke(null, null);
+
             // Note that because the HwndwWrapper uses a WeakReference list, we don't need
             // to remove the old value. Simply killing the reference is good enough.
             SystemResources_hwndNotifyHookField.SetValue(null, hookDelegate);
-
-            // Make sure _hwndNotify is set!
-            SystemResources_EnsureResourceChangeListener.Invoke(null, null);
 
             // this does SystemResources._hwndNotify.Value.AddHook(hookDelegate)
             var hwndNotify = SystemResources_hwndNotifyField.GetValue(null);
             var hwndNotifyValue = SecurityCriticalDataClass_ValueProperty.GetValue(hwndNotify, null);
             HwndWrapper_AddHookMethod.Invoke(hwndNotifyValue, new object[] { hookDelegate });
         }
+
+        private static IntPtr EmptySystemThemeFilterMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) { return IntPtr.Zero; }
 
         private static IntPtr InvokeSystemThemeFilterMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
